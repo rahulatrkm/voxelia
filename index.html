@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+<title>Voxelia — a 3D voxel sandbox you can build anything in</title>
+<meta name="description" content="Voxelia is a browser-based 3D voxel sandbox: explore procedurally generated worlds, mine and place blocks, and build anything — no download, runs in your browser." />
+<meta name="theme-color" content="#7ec0ff" />
+<meta property="og:title" content="Voxelia — 3D voxel sandbox in your browser" />
+<meta property="og:description" content="Explore, mine, and build in an infinite voxel world. No download — plays instantly in the browser." />
+<meta property="og:type" content="website" />
+<style>
+  *{box-sizing:border-box; margin:0; padding:0}
+  html,body{height:100%; overflow:hidden; background:#0b1220; color:#eaf2ff;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif; user-select:none}
+  #c{display:block; width:100vw; height:100vh}
+  /* crosshair */
+  #cross{position:fixed; left:50%; top:50%; width:22px; height:22px; transform:translate(-50%,-50%); pointer-events:none; opacity:.85; z-index:5}
+  #cross::before,#cross::after{content:""; position:absolute; background:#fff; box-shadow:0 0 2px rgba(0,0,0,.6)}
+  #cross::before{left:10px; top:0; width:2px; height:22px}
+  #cross::after{top:10px; left:0; height:2px; width:22px}
+
+  /* hotbar */
+  #hotbar{position:fixed; bottom:16px; left:50%; transform:translateX(-50%); display:flex; gap:6px; z-index:6; padding:6px;
+    background:rgba(8,14,26,.5); border:1px solid rgba(255,255,255,.12); border-radius:12px; backdrop-filter:blur(6px)}
+  .slot{width:52px; height:52px; border-radius:9px; border:2px solid rgba(255,255,255,.15); position:relative; display:flex; align-items:center; justify-content:center; cursor:pointer}
+  .slot.on{border-color:#ffd76b; box-shadow:0 0 0 2px rgba(255,215,107,.35)}
+  .slot .sw{width:34px; height:34px; border-radius:6px; box-shadow:inset 0 -6px 0 rgba(0,0,0,.18)}
+  .slot .num{position:absolute; top:2px; left:5px; font-size:.62rem; color:#cfe0ff; opacity:.8}
+  .slot .nm{position:absolute; bottom:-17px; left:0; right:0; text-align:center; font-size:.6rem; color:#bcd; opacity:0; transition:.15s}
+  .slot:hover .nm{opacity:1}
+
+  /* HUD */
+  #hud{position:fixed; top:12px; left:12px; z-index:6; display:flex; gap:8px; flex-wrap:wrap}
+  .pill{background:rgba(8,14,26,.55); border:1px solid rgba(255,255,255,.12); border-radius:10px; padding:6px 11px; font-size:.82rem; backdrop-filter:blur(4px)}
+  #tip{position:fixed; bottom:84px; left:50%; transform:translateX(-50%); z-index:6; font-size:.85rem; color:#cfe0ff;
+    background:rgba(8,14,26,.5); border:1px solid rgba(255,255,255,.1); padding:6px 14px; border-radius:10px; opacity:0; transition:.3s}
+  #tip.show{opacity:1}
+
+  /* overlays */
+  .overlay{position:fixed; inset:0; z-index:20; display:flex; align-items:center; justify-content:center; padding:20px;
+    background:linear-gradient(180deg,rgba(9,15,30,.86),rgba(9,15,30,.94)); backdrop-filter:blur(4px)}
+  .card{max-width:520px; width:100%; background:linear-gradient(180deg,#111c33,#0c1526); border:1px solid rgba(255,255,255,.12);
+    border-radius:22px; padding:30px 28px; text-align:center}
+  .logo{font-size:2.4rem; font-weight:900; letter-spacing:-1px}
+  .logo .v{color:#7ec0ff} .logo .x{color:#ffd76b}
+  .tag{color:#9fb6d8; margin:.3em 0 1.2em}
+  .btn{border:0; cursor:pointer; font-weight:800; font-size:1.05rem; color:#08101c;
+    background:linear-gradient(90deg,#7ec0ff,#9b8bff); padding:14px 26px; border-radius:14px}
+  .btn.ghost{background:transparent; border:1px solid rgba(255,255,255,.18); color:#eaf2ff; font-weight:600; font-size:.95rem; padding:11px 18px}
+  .row{display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-top:10px}
+  .feat{display:grid; grid-template-columns:1fr 1fr; gap:10px; text-align:left; margin:18px 0 8px}
+  .feat div{background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:10px 12px; font-size:.86rem; color:#c7d6ef}
+  .feat b{color:#eaf2ff}
+  .controls{color:#9fb6d8; font-size:.82rem; line-height:1.9; margin-top:12px}
+  kbd{background:#1b2740; border:1px solid rgba(255,255,255,.15); border-radius:5px; padding:1px 7px; font-size:.8em}
+  .pro{margin-top:16px; padding:14px; border:1px dashed rgba(255,215,107,.4); border-radius:14px; background:rgba(255,215,107,.05)}
+  .pro b{color:#ffd76b}
+  .loading{color:#9fb6d8; margin-top:10px; font-size:.85rem}
+  .price{font-weight:800; color:#ffd76b}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="cross"></div>
+
+<div id="hud">
+  <div class="pill" id="posPill">x 0 · z 0</div>
+  <div class="pill" id="fpsPill">– fps</div>
+  <div class="pill" id="modePill">🚶 Walk</div>
+  <div class="pill" id="timePill">☀️ Day</div>
+</div>
+
+<div id="tip"></div>
+<div id="hotbar"></div>
+
+<!-- Start / menu -->
+<div class="overlay" id="menu">
+  <div class="card">
+    <div class="logo"><span class="v">Voxel</span><span class="x">ia</span></div>
+    <p class="tag">A 3D voxel sandbox you can build anything in — right in your browser.</p>
+    <div class="feat">
+      <div><b>🌍 Infinite-feeling worlds</b><br/>Procedurally generated terrain with hills, water, sand & trees.</div>
+      <div><b>⛏️ Mine & build</b><br/>Break and place 8 block types with a classic hotbar.</div>
+      <div><b>🏃 Real physics</b><br/>Gravity, jumping, collision — plus a creative fly mode.</div>
+      <div><b>💾 Your world saves</b><br/>Everything you build is stored locally and reloads next time.</div>
+    </div>
+    <div class="row">
+      <button class="btn" id="playBtn">Play now →</button>
+      <button class="btn ghost" id="resetBtn">New world</button>
+    </div>
+    <div class="controls">
+      <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move · <kbd>Space</kbd> jump · <kbd>Shift</kbd> sprint ·
+      <kbd>F</kbd> fly · mouse look · <b>left-click</b> mine · <b>right-click</b> place · <kbd>1</kbd>–<kbd>8</kbd> pick block
+    </div>
+    <div class="pro">
+      <b>Voxelia Pro</b> — bigger worlds, more block types, multiplayer & cloud saves.
+      <span class="price">$4/mo</span> · <span id="proNote">(demo build — core game is free)</span>
+    </div>
+    <div class="loading" id="loadNote"></div>
+  </div>
+</div>
+
+<!-- Pause -->
+<div class="overlay" id="pause" style="display:none">
+  <div class="card">
+    <div class="logo"><span class="v">Paused</span></div>
+    <p class="tag">Your world is saved automatically.</p>
+    <div class="row">
+      <button class="btn" id="resumeBtn">Resume</button>
+      <button class="btn ghost" id="saveBtn">Save now</button>
+      <button class="btn ghost" id="menuBtn">Main menu</button>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+</script>
+<script type="module">
+import * as THREE from "three";
+
+// ============================================================= config
+const CHUNK = 16;            // chunk width/depth in blocks
+const WORLD_R = 4;           // chunks in each direction from origin (world = (2R+1)^2 chunks)
+const WORLD_H = 40;          // max build height
+const SEA = 8;               // water level
+const BS = 1;                // block size
+
+// block types
+const B = { AIR:0, GRASS:1, DIRT:2, STONE:3, SAND:4, WOOD:5, LEAF:6, WATER:7, PLANK:8, GLASS:9, BRICK:10 };
+const BLOCKS = {
+  [B.GRASS]:{name:"Grass", top:0x6ab04c, side:0x7a5a37, bottom:0x7a5a37},
+  [B.DIRT] :{name:"Dirt",  all:0x7a5a37},
+  [B.STONE]:{name:"Stone", all:0x8a8f98},
+  [B.SAND] :{name:"Sand",  all:0xe3d59e},
+  [B.WOOD] :{name:"Wood",  top:0xb08a4f, side:0x6e4f2a, bottom:0xb08a4f},
+  [B.LEAF] :{name:"Leaves",all:0x4f9d3a, alpha:0.92},
+  [B.WATER]:{name:"Water", all:0x2f7fc0, alpha:0.6, liquid:true},
+  [B.PLANK]:{name:"Planks",all:0xc79a5b},
+  [B.GLASS]:{name:"Glass", all:0xbfe6ff, alpha:0.4},
+  [B.BRICK]:{name:"Brick", all:0xb0553f},
+};
+const HOTBAR = [B.GRASS,B.DIRT,B.STONE,B.SAND,B.PLANK,B.WOOD,B.GLASS,B.BRICK];
+
+// ============================================================= world storage
+// map key "x,y,z" -> block id (only non-terrain overrides + full store)
+const SIZE_X = (WORLD_R*2+1)*CHUNK;
+const SIZE_Z = (WORLD_R*2+1)*CHUNK;
+const OX = WORLD_R*CHUNK, OZ = WORLD_R*CHUNK; // origin offset so indices >=0
+const voxels = new Uint8Array(SIZE_X*WORLD_H*SIZE_Z);
+const idx = (x,y,z)=> ((x+OX) * WORLD_H + y) * SIZE_Z + (z+OZ);
+const inBounds = (x,y,z)=> (x+OX)>=0 && (x+OX)<SIZE_X && y>=0 && y<WORLD_H && (z+OZ)>=0 && (z+OZ)<SIZE_Z;
+function getV(x,y,z){ if(!inBounds(x,y,z)) return B.AIR; return voxels[idx(x,y,z)]; }
+function setV(x,y,z,v){ if(!inBounds(x,y,z)) return; voxels[idx(x,y,z)]=v; }
+
+// ---- deterministic value-noise terrain ----
+function hash2(x,z){ let h=(x*374761393 + z*668265263) ^ 0x9e3779b9; h=(h^(h>>13))*1274126177; return ((h^(h>>16))>>>0)/4294967296; }
+function smooth(a,b,t){ t=t*t*(3-2*t); return a+(b-a)*t; }
+function noise(x,z){
+  const xi=Math.floor(x), zi=Math.floor(z), xf=x-xi, zf=z-zi;
+  const v00=hash2(xi,zi), v10=hash2(xi+1,zi), v01=hash2(xi,zi+1), v11=hash2(xi+1,zi+1);
+  return smooth(smooth(v00,v10,xf), smooth(v01,v11,xf), zf);
+}
+function heightAt(x,z){
+  let h=0, amp=1, freq=0.045, sum=0;
+  for(let o=0;o<4;o++){ h+=noise(x*freq+100,z*freq+100)*amp; sum+=amp; amp*=0.5; freq*=2; }
+  h/=sum;
+  return Math.floor(SEA + 2 + h*(WORLD_H-SEA-8));
+}
+
+function generateWorld(seedShift=0){
+  voxels.fill(0);
+  for(let x=-OX;x<SIZE_X-OX;x++){
+    for(let z=-OZ;z<SIZE_Z-OZ;z++){
+      const h=Math.min(WORLD_H-2, heightAt(x+seedShift,z+seedShift));
+      for(let y=0;y<=h;y++){
+        let b=B.STONE;
+        if(y===h) b = (h<=SEA)? B.SAND : B.GRASS;
+        else if(y>h-3) b = (h<=SEA)? B.SAND : B.DIRT;
+        setV(x,y,z,b);
+      }
+      // water fill
+      for(let y=h+1;y<=SEA;y++) setV(x,y,z,B.WATER);
+      // trees
+      if(h>SEA && hash2(x*7+seedShift,z*7+seedShift)>0.985){
+        const th=3+Math.floor(hash2(x,z)*3);
+        for(let t=1;t<=th;t++) setV(x,h+t,z,B.WOOD);
+        for(let lx=-2;lx<=2;lx++)for(let lz=-2;lz<=2;lz++)for(let ly=th-1;ly<=th+1;ly++){
+          if(Math.abs(lx)+Math.abs(lz)+Math.abs(ly-th)<=3 && getV(x+lx,h+ly,z+lz)===B.AIR)
+            setV(x+lx,h+ly,z+lz,B.LEAF);
+        }
+      }
+    }
+  }
+}
+
+// ============================================================= three.js setup
+const canvas=document.getElementById("c");
+const renderer=new THREE.WebGLRenderer({canvas, antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x8fc7ff);
+scene.fog=new THREE.Fog(0x8fc7ff, CHUNK*3, CHUNK*(WORLD_R*2));
+
+const camera=new THREE.PerspectiveCamera(72, innerWidth/innerHeight, 0.1, 1000);
+
+const sun=new THREE.DirectionalLight(0xffffff, 1.0);
+sun.position.set(60,100,30); scene.add(sun);
+const amb=new THREE.HemisphereLight(0xbfe0ff, 0x445533, 0.7); scene.add(amb);
+
+function resize(){ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); }
+addEventListener("resize",resize); resize();
+
+// water plane (visual, simple)
+const waterMat=new THREE.MeshLambertMaterial({color:0x2f7fc0, transparent:true, opacity:0.6});
+
+// ============================================================= chunk meshing
+const solidMat = new THREE.MeshLambertMaterial({vertexColors:true});
+const transMat = new THREE.MeshLambertMaterial({vertexColors:true, transparent:true, opacity:0.85, depthWrite:false});
+const chunkMeshes = new Map(); // "cx,cz" -> {solid, trans}
+
+const FACES=[
+  {dir:[ 1,0,0], corners:[[1,0,0],[1,1,0],[1,1,1],[1,0,1]], n:[1,0,0]},
+  {dir:[-1,0,0], corners:[[0,0,1],[0,1,1],[0,1,0],[0,0,0]], n:[-1,0,0]},
+  {dir:[0, 1,0], corners:[[0,1,1],[1,1,1],[1,1,0],[0,1,0]], n:[0,1,0]},
+  {dir:[0,-1,0], corners:[[0,0,0],[1,0,0],[1,0,1],[0,0,1]], n:[0,-1,0]},
+  {dir:[0,0, 1], corners:[[1,0,1],[1,1,1],[0,1,1],[0,0,1]], n:[0,0,1]},
+  {dir:[0,0,-1], corners:[[0,0,0],[0,1,0],[1,1,0],[1,0,0]], n:[0,0,-1]},
+];
+function faceColor(bid, ny){
+  const def=BLOCKS[bid]; if(!def) return [1,1,1];
+  let hex = def.all!=null ? def.all : (ny>0.5?def.top: ny<-0.5?def.bottom:def.side);
+  if(hex==null) hex=def.side||def.all||0xffffff;
+  const c=new THREE.Color(hex);
+  // subtle face shading
+  const shade = ny>0.5?1.0 : ny<-0.5?0.6 : 0.82;
+  return [c.r*shade, c.g*shade, c.b*shade];
+}
+function isTransparent(bid){ return bid===B.AIR || (BLOCKS[bid] && BLOCKS[bid].alpha!=null); }
+
+function buildChunk(cx,cz){
+  const key=cx+","+cz;
+  // dispose old
+  const old=chunkMeshes.get(key);
+  if(old){ if(old.solid){scene.remove(old.solid); old.solid.geometry.dispose();} if(old.trans){scene.remove(old.trans); old.trans.geometry.dispose();} }
+
+  const pos=[], col=[], nor=[], ipos=[], icol=[], inor=[];
+  const x0=cx*CHUNK, z0=cz*CHUNK;
+  for(let lx=0;lx<CHUNK;lx++)for(let lz=0;lz<CHUNK;lz++)for(let y=0;y<WORLD_H;y++){
+    const wx=x0+lx, wz=z0+lz;
+    const bid=getV(wx,y,wz); if(bid===B.AIR) continue;
+    const trans = BLOCKS[bid] && BLOCKS[bid].alpha!=null;
+    for(const f of FACES){
+      const nb=getV(wx+f.dir[0], y+f.dir[1], wz+f.dir[2]);
+      // draw face if neighbour is air, or (for solids) neighbour is transparent
+      const neighTrans = isTransparent(nb);
+      if(!neighTrans) continue;
+      if(trans && nb===bid) continue; // don't draw between same liquid/glass
+      const c=faceColor(bid, f.n[1]);
+      const P = trans? ipos : pos, C = trans? icol : col, N = trans? inor : nor;
+      const base=P.length/3;
+      for(const cor of f.corners){ P.push(wx+cor[0], y+cor[1], wz+cor[2]); C.push(c[0],c[1],c[2]); N.push(f.n[0],f.n[1],f.n[2]); }
+      // two triangles
+      const gi = trans? igi() : sgi();
+      gi.push(base, base+1, base+2, base, base+2, base+3);
+    }
+  }
+  // index accumulators via closures
+  function makeMesh(P,C,N,I,mat){
+    if(P.length===0) return null;
+    const g=new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(P,3));
+    g.setAttribute("color", new THREE.Float32BufferAttribute(C,3));
+    g.setAttribute("normal", new THREE.Float32BufferAttribute(N,3));
+    g.setIndex(I);
+    const m=new THREE.Mesh(g,mat); m.frustumCulled=true; scene.add(m); return m;
+  }
+  const solid=makeMesh(pos,col,nor,SOLID_IDX,solidMat);
+  const trans=makeMesh(ipos,icol,inor,TRANS_IDX,transMat);
+  chunkMeshes.set(key,{solid,trans});
+  SOLID_IDX=[]; TRANS_IDX=[];
+}
+// index buffers (module-scope so closures push into them)
+let SOLID_IDX=[], TRANS_IDX=[];
+function sgi(){ return SOLID_IDX; }
+function igi(){ return TRANS_IDX; }
+
+function rebuildAll(){
+  for(let cx=-WORLD_R;cx<=WORLD_R;cx++)for(let cz=-WORLD_R;cz<=WORLD_R;cz++) buildChunk(cx,cz);
+}
+function chunkOf(w){ return Math.floor(w/CHUNK); }
+function rebuildAround(wx,wz){
+  const cx=chunkOf(wx), cz=chunkOf(wz);
+  const set=new Set([cx+","+cz]);
+  // if on a border, rebuild neighbour too
+  if(((wx%CHUNK)+CHUNK)%CHUNK===0) set.add((cx-1)+","+cz);
+  if(((wx%CHUNK)+CHUNK)%CHUNK===CHUNK-1) set.add((cx+1)+","+cz);
+  if(((wz%CHUNK)+CHUNK)%CHUNK===0) set.add(cx+","+(cz-1));
+  if(((wz%CHUNK)+CHUNK)%CHUNK===CHUNK-1) set.add(cx+","+(cz+1));
+  for(const k of set){ const [a,b]=k.split(",").map(Number); if(a>=-WORLD_R&&a<=WORLD_R&&b>=-WORLD_R&&b<=WORLD_R) buildChunk(a,b); }
+}
+
+// ============================================================= player + physics
+const player={ pos:new THREE.Vector3(0.5, WORLD_H, 0.5), vel:new THREE.Vector3(), onGround:false, fly:false, h:1.7, r:0.3 };
+let yaw=0, pitch=0;
+const keys={};
+addEventListener("keydown",e=>{ keys[e.code]=true;
+  if(e.code==="KeyF"){ player.fly=!player.fly; player.vel.set(0,0,0); tip(player.fly?"Fly mode ON":"Fly mode OFF"); }
+  const n=+e.key; if(n>=1&&n<=HOTBAR.length){ selectSlot(n-1); }
+});
+addEventListener("keyup",e=>{ keys[e.code]=false; });
+
+function spawnPlayer(){
+  const h=heightAt(0,0);
+  player.pos.set(0.5, h+2, 0.5); player.vel.set(0,0,0); yaw=0; pitch=0;
+}
+
+// collision: treat player as an AABB, resolve against solid voxels
+function isSolidAt(x,y,z){ const b=getV(Math.floor(x),Math.floor(y),Math.floor(z)); return b!==B.AIR && !(BLOCKS[b]&&BLOCKS[b].liquid); }
+
+function tryMove(dt){
+  const speed = player.fly? 9 : 4.5;
+  const sprint = keys["ShiftLeft"]||keys["ShiftRight"] ? 1.7 : 1;
+  // input direction relative to yaw
+  let fx=0, fz=0;
+  if(keys["KeyW"]) fz-=1; if(keys["KeyS"]) fz+=1;
+  if(keys["KeyA"]) fx-=1; if(keys["KeyD"]) fx+=1;
+  const len=Math.hypot(fx,fz)||1; fx/=len; fz/=len;
+  const sin=Math.sin(yaw), cos=Math.cos(yaw);
+  const dx=(fx*cos - fz*sin)*speed*sprint;
+  const dz=(fx*sin + fz*cos)*speed*sprint;
+
+  if(player.fly){
+    let vy=0; if(keys["Space"]) vy+=speed; if(keys["ControlLeft"]||keys["ShiftLeft"]) vy-=speed;
+    moveAxis(dx*dt,0,0); moveAxis(0,vy*dt,0); moveAxis(0,0,dz*dt);
+    return;
+  }
+  // gravity
+  player.vel.y -= 22*dt; if(player.vel.y<-40) player.vel.y=-40;
+  if((keys["Space"]) && player.onGround){ player.vel.y=8.2; player.onGround=false; }
+  moveAxis(dx*dt,0,0);
+  moveAxis(0,player.vel.y*dt,0);
+  moveAxis(0,0,dz*dt);
+}
+
+// move one axis with swept AABB vs voxels
+function moveAxis(dx,dy,dz){
+  const p=player.pos, r=player.r, h=player.h;
+  p.x+=dx; p.y+=dy; p.z+=dz;
+  const minX=Math.floor(p.x-r), maxX=Math.floor(p.x+r);
+  const minY=Math.floor(p.y-h), maxY=Math.floor(p.y);   // feet at p.y-h .. head at p.y
+  const minZ=Math.floor(p.z-r), maxZ=Math.floor(p.z+r);
+  for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)for(let z=minZ;z<=maxZ;z++){
+    if(!isSolidAt(x+0.5,y+0.5,z+0.5)) continue;
+    // overlap → push back along the axis we moved
+    if(dx>0){ p.x=Math.min(p.x, x - r); }
+    else if(dx<0){ p.x=Math.max(p.x, x+1 + r); }
+    if(dy>0){ p.y=Math.min(p.y, y - 0.0); }
+    else if(dy<0){ p.y=Math.max(p.y, y+1 + h); player.onGround=true; player.vel.y=0; }
+    if(dz>0){ p.z=Math.min(p.z, z - r); }
+    else if(dz<0){ p.z=Math.max(p.z, z+1 + r); }
+  }
+  if(dy<0 && !collidedBelow()) { /* falling */ }
+}
+function collidedBelow(){
+  const p=player.pos, r=player.r, h=player.h;
+  const y=Math.floor(p.y-h-0.02);
+  for(let x=Math.floor(p.x-r);x<=Math.floor(p.x+r);x++)
+    for(let z=Math.floor(p.z-r);z<=Math.floor(p.z+r);z++)
+      if(isSolidAt(x+0.5,y+0.5,z+0.5)) return true;
+  return false;
+}
+
+// ============================================================= raycast for build/mine
+const highlight=new THREE.LineSegments(
+  new THREE.EdgesGeometry(new THREE.BoxGeometry(1.001,1.001,1.001)),
+  new THREE.LineBasicMaterial({color:0x000000, transparent:true, opacity:0.5}));
+highlight.visible=false; scene.add(highlight);
+
+function raycastVoxel(){
+  // DDA voxel traversal from camera along view dir
+  const dir=new THREE.Vector3(0,0,-1).applyEuler(camera.rotation).normalize();
+  const o=camera.position.clone();
+  let x=Math.floor(o.x), y=Math.floor(o.y), z=Math.floor(o.z);
+  const stepX=Math.sign(dir.x), stepY=Math.sign(dir.y), stepZ=Math.sign(dir.z);
+  const tDeltaX=Math.abs(1/dir.x), tDeltaY=Math.abs(1/dir.y), tDeltaZ=Math.abs(1/dir.z);
+  let tMaxX=(stepX>0? (x+1-o.x):(o.x-x))*tDeltaX;
+  let tMaxY=(stepY>0? (y+1-o.y):(o.y-y))*tDeltaY;
+  let tMaxZ=(stepZ>0? (z+1-o.z):(o.z-z))*tDeltaZ;
+  let face=[0,0,0];
+  for(let i=0;i<80;i++){
+    const b=getV(x,y,z);
+    if(b!==B.AIR && !(BLOCKS[b]&&BLOCKS[b].liquid)) return {x,y,z,face};
+    if(tMaxX<tMaxY && tMaxX<tMaxZ){ x+=stepX; tMaxX+=tDeltaX; face=[-stepX,0,0]; }
+    else if(tMaxY<tMaxZ){ y+=stepY; tMaxY+=tDeltaY; face=[0,-stepY,0]; }
+    else { z+=stepZ; tMaxZ+=tDeltaZ; face=[0,0,-stepZ]; }
+  }
+  return null;
+}
+
+let selected=0;
+function selectSlot(i){ selected=i; document.querySelectorAll(".slot").forEach((s,k)=>s.classList.toggle("on",k===i)); }
+
+function mine(){ const h=raycastVoxel(); if(!h) return; if(getV(h.x,h.y,h.z)===B.AIR) return;
+  setV(h.x,h.y,h.z,B.AIR); rebuildAround(h.x,h.z); saveSoon(); }
+function place(){ const h=raycastVoxel(); if(!h) return;
+  const nx=h.x+h.face[0], ny=h.y+h.face[1], nz=h.z+h.face[2];
+  // don't place inside player
+  const p=player.pos;
+  if(nx===Math.floor(p.x) && nz===Math.floor(p.z) && (ny===Math.floor(p.y)||ny===Math.floor(p.y-1))) return;
+  if(getV(nx,ny,nz)!==B.AIR && getV(nx,ny,nz)!==B.WATER) return;
+  setV(nx,ny,nz,HOTBAR[selected]); rebuildAround(nx,nz); saveSoon(); }
+
+// ============================================================= pointer lock + mouse
+let locked=false;
+canvas.addEventListener("click",()=>{ if(!running) return; if(!locked) canvas.requestPointerLock(); });
+document.addEventListener("pointerlockchange",()=>{ locked=document.pointerLockElement===canvas;
+  if(!locked && running) showPause(); });
+document.addEventListener("mousemove",e=>{ if(!locked) return;
+  yaw += e.movementX*0.0022; pitch -= e.movementY*0.0022;
+  pitch=Math.max(-1.55,Math.min(1.55,pitch));
+});
+addEventListener("mousedown",e=>{ if(!locked) return; if(e.button===0) mine(); else if(e.button===2) place(); });
+addEventListener("contextmenu",e=>e.preventDefault());
+
+// ============================================================= hotbar UI
+const hotbarEl=document.getElementById("hotbar");
+HOTBAR.forEach((bid,i)=>{
+  const def=BLOCKS[bid];
+  const hex = def.all!=null?def.all:def.top;
+  const s=document.createElement("div"); s.className="slot"+(i===0?" on":"");
+  s.innerHTML=`<span class="num">${i+1}</span><div class="sw" style="background:#${(hex).toString(16).padStart(6,"0")}"></div><span class="nm">${def.name}</span>`;
+  s.addEventListener("click",()=>selectSlot(i));
+  hotbarEl.appendChild(s);
+});
+
+// ============================================================= save/load
+const SAVE_KEY="voxelia_world_v1";
+let saveTimer=null;
+function saveSoon(){ clearTimeout(saveTimer); saveTimer=setTimeout(saveWorld,800); }
+function saveWorld(){
+  try{
+    // store only diffs vs terrain would be ideal; store RLE of full array (compact enough for this size)
+    const rle=[]; let prev=voxels[0], run=0;
+    for(let i=0;i<voxels.length;i++){ const v=voxels[i]; if(v===prev){run++;} else {rle.push(prev,run); prev=v; run=1;} }
+    rle.push(prev,run);
+    localStorage.setItem(SAVE_KEY, JSON.stringify({p:[player.pos.x,player.pos.y,player.pos.z], yaw,pitch, rle}));
+    tip("Saved");
+  }catch(e){ console.warn("save failed",e); }
+}
+function loadWorld(){
+  const raw=localStorage.getItem(SAVE_KEY); if(!raw) return false;
+  try{
+    const d=JSON.parse(raw);
+    let i=0; for(let k=0;k<d.rle.length;k+=2){ const val=d.rle[k], run=d.rle[k+1]; for(let r=0;r<run;r++) voxels[i++]=val; }
+    if(d.p){ player.pos.set(d.p[0],d.p[1],d.p[2]); }
+    if(typeof d.yaw==="number"){ yaw=d.yaw; pitch=d.pitch; }
+    return true;
+  }catch(e){ console.warn("load failed",e); return false; }
+}
+
+// ============================================================= tip + hud
+let tipT=0;
+function tip(t){ const el=document.getElementById("tip"); el.textContent=t; el.classList.add("show"); tipT=1400; }
+function updateHUD(){
+  document.getElementById("posPill").textContent=`x ${player.pos.x.toFixed(0)} · z ${player.pos.z.toFixed(0)}`;
+  document.getElementById("modePill").textContent=player.fly?"🕊️ Fly":"🚶 Walk";
+}
+
+// ============================================================= day/night
+let timeOfDay=0.25; // 0..1
+function updateSky(dt){
+  timeOfDay=(timeOfDay+dt/120)%1;  // ~2min day
+  const a=Math.sin(timeOfDay*Math.PI*2 - Math.PI/2)*0.5+0.5; // 0 night .. 1 noon
+  const day=new THREE.Color(0x8fc7ff), night=new THREE.Color(0x0a1430);
+  const sky=night.clone().lerp(day,a);
+  scene.background=sky; scene.fog.color=sky;
+  sun.intensity=0.25+a*0.9; amb.intensity=0.35+a*0.5;
+  sun.position.set(Math.cos(timeOfDay*Math.PI*2)*80, Math.sin(timeOfDay*Math.PI*2)*90+10, 30);
+  document.getElementById("timePill").textContent = a>0.5?"☀️ Day":"🌙 Night";
+}
+
+// ============================================================= main loop
+let running=false, lastT=performance.now(), frames=0, fpsT=0;
+function frame(now){
+  requestAnimationFrame(frame);
+  const dt=Math.min(0.05,(now-lastT)/1000); lastT=now;
+  if(running){
+    tryMove(dt);
+    // clamp inside world & floor
+    if(player.pos.y<-30){ spawnPlayer(); }
+    // camera at eye
+    camera.position.copy(player.pos);
+    camera.rotation.set(pitch,yaw,0,"YXZ");
+    // highlight targeted block
+    const h=raycastVoxel();
+    if(h){ highlight.visible=true; highlight.position.set(h.x+0.5,h.y+0.5,h.z+0.5); } else highlight.visible=false;
+    updateSky(dt); updateHUD();
+  }
+  // fps
+  frames++; fpsT+=dt; if(fpsT>=0.5){ document.getElementById("fpsPill").textContent=Math.round(frames/fpsT)+" fps"; frames=0; fpsT=0; }
+  if(tipT>0){ tipT-=dt*1000; if(tipT<=0) document.getElementById("tip").classList.remove("show"); }
+  renderer.render(scene,camera);
+}
+requestAnimationFrame(frame);
+
+// ============================================================= menu wiring
+const menu=document.getElementById("menu"), pause=document.getElementById("pause");
+function startGame(fresh){
+  document.getElementById("loadNote").textContent="Generating world…";
+  setTimeout(()=>{
+    if(fresh || !loadWorld()){ generateWorld(0); spawnPlayer(); }
+    rebuildAll();
+    menu.style.display="none"; pause.style.display="none"; running=true;
+    canvas.requestPointerLock();
+  },30);
+}
+function showPause(){ if(!running) return; running=false; pause.style.display="flex"; saveWorld(); }
+function resume(){ pause.style.display="none"; running=true; canvas.requestPointerLock(); }
+
+document.getElementById("playBtn").addEventListener("click",()=>startGame(false));
+document.getElementById("resetBtn").addEventListener("click",()=>{ localStorage.removeItem(SAVE_KEY); startGame(true); });
+document.getElementById("resumeBtn").addEventListener("click",resume);
+document.getElementById("saveBtn").addEventListener("click",saveWorld);
+document.getElementById("menuBtn").addEventListener("click",()=>{ pause.style.display="none"; menu.style.display="flex"; running=false; });
+
+// show a "saved world exists" hint
+if(localStorage.getItem(SAVE_KEY)){ document.getElementById("loadNote").textContent="A saved world was found — Play to continue it."; }
+</script>
+</body>
+</html>
