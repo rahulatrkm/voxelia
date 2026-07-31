@@ -10,20 +10,25 @@ blocks, and build whatever you imagine.
 
 ## Features
 
-- **🌍 Procedural worlds** — hills, valleys, beaches, water and trees generated
-  from noise, different every new world
-- **⛏️ Mine & build** — break and place blocks with a classic hotbar; DDA voxel
-  raycasting for pixel-precise targeting
-- **🧱 10 block types** — grass, dirt, stone, sand, wood, leaves, planks, glass,
-  brick and water
-- **🏃 Real first-person physics** — gravity, jumping, sprinting and full AABB
-  collision against the voxel world
-- **🕊️ Creative fly mode** — press `F` to lift off and build freely
-- **🌗 Day/night cycle** — a moving sun, changing sky colour and fog
-- **💾 Persistent world** — everything you build is saved locally (run-length
-  encoded) and reloads when you come back
-- **⚡ Runs anywhere** — pure WebGL via Three.js, 60 fps in a browser tab, works
-  on desktop; no install
+- **🌍 Infinite streaming worlds** — chunks load and unload around you as you walk,
+  so the world never ends
+- **🧱 Textured blocks** — every block has a procedurally-generated texture on a
+  shared atlas (grass fringe, wood grain, brick mortar, ore flecks…)
+- **⛏️ Mine & build** — DDA voxel raycasting for pixel-precise targeting; blocks
+  drop into your inventory when mined
+- **❤️ Survival mode** — health & hunger, fall damage, drowning, eating to heal,
+  death & respawn — or switch to **Creative** with flight and unlimited blocks
+- **🐷 Mobs** — pigs and sheep roam by day; zombies spawn in the dark, chase you
+  and deal damage (fight back by hitting them)
+- **🎒 Inventory & crafting** — a grid inventory plus recipes (planks, glass,
+  brick)
+- **🔊 Procedural sound** — footsteps, block break/place, hurt & eat SFX via
+  WebAudio (no audio files)
+- **📱 Mobile controls** — on-screen joystick, look-drag and action buttons on
+  touch devices
+- **🌗 Day/night cycle** with a moving sun, sky-colour blending and fog
+- **💾 Persistent world** — your world, inventory and stats save locally and
+  reload next time
 
 ## Controls
 
