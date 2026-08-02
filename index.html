@@ -270,11 +270,22 @@ function setV(x,y,z,v){ if(y<0||y>=WORLD_H) return; const cx=worldToChunk(x),cz=
 
 // terrain gen
 let SEED=1234;
-function hash2(x,z){ let h=(x*374761393 + z*668265263 + SEED*13) ^ 0x9e3779b9; h=(h^(h>>13))*1274126177; return ((h^(h>>16))>>>0)/4294967296; }
+function hash2(x,z){ // Math.imul keeps true 32-bit maths; plain * overflowed and skewed noise low
+  let h=(Math.imul(x,374761393) + Math.imul(z,668265263) + Math.imul(SEED,13)) ^ 0x9e3779b9;
+  h=Math.imul(h^(h>>>13),1274126177); return ((h^(h>>>16))>>>0)/4294967296; }
 function smooth(a,b,t){ t=t*t*(3-2*t); return a+(b-a)*t; }
 function vnoise(x,z){ const xi=Math.floor(x),zi=Math.floor(z),xf=x-xi,zf=z-zi;
   return smooth(smooth(hash2(xi,zi),hash2(xi+1,zi),xf), smooth(hash2(xi,zi+1),hash2(xi+1,zi+1),xf), zf); }
-function heightAt(x,z){ let h=0,amp=1,f=0.03,s=0; for(let o=0;o<4;o++){h+=vnoise(x*f+50,z*f+50)*amp; s+=amp; amp*=0.5; f*=2;} h/=s; return Math.floor(SEA+3+h*(WORLD_H-SEA-14)); }
+function heightAt(x,z){
+  let h=0,amp=1,f=0.016,s=0;
+  for(let o=0;o<5;o++){ h+=vnoise(x*f+50,z*f+50)*amp; s+=amp; amp*=0.5; f*=2; }
+  h/=s;
+  // A slow region mask carves real lowlands and highlands instead of uniform bumps.
+  const region=vnoise(x*0.0035+900,z*0.0035+900);
+  const upland=Math.pow(Math.max(0,(region-0.5)/0.5),1.6);
+  const v=Math.max(0,Math.min(1,h*0.72+upland*0.7));
+  return Math.floor(SEA-8+v*(WORLD_H-SEA-2));
+}
 function genChunk(cx,cz){
   const c=new Uint8Array(CHUNK*WORLD_H*CHUNK);
   for(let lx=0;lx<CHUNK;lx++)for(let lz=0;lz<CHUNK;lz++){
