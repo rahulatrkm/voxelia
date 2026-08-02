@@ -412,6 +412,10 @@ addEventListener("keydown",e=>{ keys[e.code]=true;
   const n=+e.key; if(n>=1&&n<=HOTBAR.length) selectSlot(n-1);
 });
 addEventListener("keyup",e=>{ keys[e.code]=false; });
+// losing focus never fires keyup, which would leave the player walking forever
+function clearKeys(){ for(const k in keys) keys[k]=false; }
+addEventListener("blur", clearKeys);
+document.addEventListener("visibilitychange",()=>{ if(document.hidden) clearKeys(); });
 
 function spawnPlayer(){ const h=heightAt(0,0); player.pos.set(0.5,h+2,0.5); player.vel.set(0,0,0); yaw=0;pitch=0;
   player.hp=player.maxHp; player.food=player.maxFood; player.fallStart=player.pos.y; }
@@ -582,7 +586,7 @@ function remesh(wx,wz){ const cx=worldToChunk(wx),cz=worldToChunk(wz); buildMesh
 // ============================================================ pointer lock + mouse
 let locked=false;
 canvas.addEventListener("click",()=>{ if(running&&!locked) canvas.requestPointerLock(); });
-document.addEventListener("pointerlockchange",()=>{ locked=document.pointerLockElement===canvas; if(!locked&&running&&document.getElementById("inv").style.display!=="flex") showPause(); });
+document.addEventListener("pointerlockchange",()=>{ locked=document.pointerLockElement===canvas; if(!locked){ clearKeys(); } if(!locked&&running&&document.getElementById("inv").style.display!=="flex") showPause(); });
 document.addEventListener("mousemove",e=>{ if(!locked)return; yaw+=e.movementX*0.0022; pitch-=e.movementY*0.0022; pitch=Math.max(-1.55,Math.min(1.55,pitch)); });
 addEventListener("mousedown",e=>{ if(!locked)return; if(e.button===0)mine(); else if(e.button===2)place(); });
 addEventListener("contextmenu",e=>e.preventDefault());
@@ -668,6 +672,9 @@ document.querySelectorAll(".mode").forEach(m=>m.addEventListener("click",()=>{ d
 function clearMeshes(){ for(const [k,m] of meshes){ for(const mm of [m.solid,m.trans]) if(mm){scene.remove(mm);mm.geometry.dispose();} } meshes.clear(); }
 function clearMobs(){ for(const m of mobs) scene.remove(m.mesh); mobs.length=0; }
 function startGame(fresh){ document.getElementById("loadNote").textContent="Generating world…";
+  // a focused menu button would swallow Space, which is jump
+  if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  clearKeys();
   setTimeout(()=>{ clearMeshes(); clearMobs();
     if(fresh || !loadWorld()){ SEED=(Math.random()*1e6)|0; chunks.clear(); spawnPlayer(); for(const k in inv) delete inv[k];
       if(mode==="survival"){ give(B.DIRT,10); give(B.PLANK,10); } }
