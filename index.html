@@ -207,13 +207,19 @@ import * as THREE from "three";
 
 // ============================================================ config
 const CHUNK=16, WORLD_H=48, SEA=10, RENDER=5; // render radius in chunks
-const B={AIR:0,GRASS:1,DIRT:2,STONE:3,SAND:4,WOOD:5,LEAF:6,WATER:7,PLANK:8,GLASS:9,BRICK:10,COAL:11,BREAD:12};
+const B={AIR:0,GRASS:1,DIRT:2,STONE:3,SAND:4,WOOD:5,LEAF:6,WATER:7,PLANK:8,GLASS:9,BRICK:10,COAL:11,BREAD:12,
+  COBBLE:13,IRON:14,GOLD:15,DIAMOND:16,SNOW:17,CACTUS:18,GRAVEL:19,TORCH:20,BEDROCK:21};
 const BLOCKS={
   [B.GRASS]:{name:"Grass"},[B.DIRT]:{name:"Dirt"},[B.STONE]:{name:"Stone"},[B.SAND]:{name:"Sand"},
   [B.WOOD]:{name:"Wood"},[B.LEAF]:{name:"Leaves",alpha:true},[B.WATER]:{name:"Water",alpha:true,liquid:true},
   [B.PLANK]:{name:"Planks"},[B.GLASS]:{name:"Glass",alpha:true},[B.BRICK]:{name:"Brick"},[B.COAL]:{name:"Coal Ore"},
+  [B.COBBLE]:{name:"Cobblestone"},[B.IRON]:{name:"Iron Ore"},[B.GOLD]:{name:"Gold Ore"},[B.DIAMOND]:{name:"Diamond Ore"},
+  [B.SNOW]:{name:"Snow"},[B.CACTUS]:{name:"Cactus"},[B.GRAVEL]:{name:"Gravel"},
+  [B.TORCH]:{name:"Torch",alpha:true,light:true},[B.BEDROCK]:{name:"Bedrock",unbreakable:true},
 };
-const HOTBAR=[B.GRASS,B.DIRT,B.STONE,B.PLANK,B.WOOD,B.GLASS,B.BRICK,B.SAND];
+const HOTBAR=[B.GRASS,B.DIRT,B.COBBLE,B.PLANK,B.WOOD,B.GLASS,B.TORCH,B.SAND];
+// stone drops cobble when mined, the way it should
+const DROPS={[B.STONE]:B.COBBLE,[B.GRASS]:B.DIRT};
 
 // ============================================================ procedural textures → atlas
 const TEX=16; // texel resolution per block face
@@ -224,6 +230,14 @@ function noiseTile(ctx,base,spread,seed){
     const d=(n-0.5)*spread;
     const c=base.map(v=>Math.max(0,Math.min(255,v+d)));
     px(ctx,x,y,`rgb(${c[0]|0},${c[1]|0},${c[2]|0})`);
+  }
+}
+function oreTile(g,rgb,seed){
+  noiseTile(g,[138,143,150],26,4);
+  for(let i=0;i<7;i++){
+    const x=2+(Math.random()*11|0), y=2+(Math.random()*11|0);
+    g.fillStyle=`rgb(${rgb[0]},${rgb[1]},${rgb[2]})`; g.fillRect(x,y,3,3);
+    g.fillStyle="rgba(255,255,255,.35)"; g.fillRect(x,y,1,1);
   }
 }
 function makeTexCanvas(kind){
@@ -246,11 +260,32 @@ function makeTexCanvas(kind){
     case "brick": { noiseTile(g,[176,85,63],10,11); g.fillStyle="rgba(230,220,210,.8)"; for(let y=0;y<TEX;y+=4)g.fillRect(0,y,TEX,1); for(let y=0;y<TEX;y+=8){for(let x=0;x<TEX;x+=8)g.fillRect((y%8?x+4:x),y,1,4);} break; }
     case "water": { noiseTile(g,[47,127,192],20,12); break; }
     case "coal": { noiseTile(g,[138,143,150],20,4); g.fillStyle="#1a1a1a"; for(let i=0;i<10;i++){g.fillRect(2+(Math.random()*12|0),2+(Math.random()*12|0),2,2);} break; }
+    case "cobble": { noiseTile(g,[126,126,130],34,14);
+      for(let i=0;i<16;i++){const x=Math.random()*TEX|0,y=Math.random()*TEX|0;g.fillStyle="rgba(80,80,86,.55)";g.fillRect(x,y,2,2);} break; }
+    case "iron": oreTile(g,[214,180,146],15); break;
+    case "gold": oreTile(g,[246,206,86],16); break;
+    case "diamond": oreTile(g,[110,232,228],17); break;
+    case "snow": noiseTile(g,[238,244,250],12,18); break;
+    case "snow_side": { noiseTile(g,[122,90,55],26,3);
+      for(let x=0;x<TEX;x++){const hh=4+((Math.sin(x*2.3)+1)*1.6|0); for(let y=0;y<hh;y++) px(g,x,y,`rgb(${232+((x*5)%16)},${240},${248})`);} break; }
+    case "cactus_top": { noiseTile(g,[74,140,72],16,19); g.strokeStyle="rgba(30,70,30,.6)"; g.strokeRect(2.5,2.5,11,11); break; }
+    case "cactus_side": { noiseTile(g,[62,124,62],14,20);
+      g.fillStyle="rgba(28,66,28,.55)"; for(let x=2;x<TEX;x+=5)g.fillRect(x,0,1,TEX);
+      g.fillStyle="rgba(226,236,200,.5)"; for(let i=0;i<12;i++)g.fillRect(2+(Math.random()*12|0),1+(Math.random()*14|0),1,1); break; }
+    case "gravel": { noiseTile(g,[136,130,124],40,21);
+      for(let i=0;i<22;i++){const x=Math.random()*TEX|0,y=Math.random()*TEX|0;g.fillStyle=Math.random()<.5?"rgba(94,90,86,.6)":"rgba(178,172,166,.5)";g.fillRect(x,y,2,2);} break; }
+    case "torch": { g.clearRect(0,0,TEX,TEX);
+      g.fillStyle="#6b4a24"; g.fillRect(7,6,2,10);
+      g.fillStyle="#ffd36b"; g.fillRect(6,3,4,4);
+      g.fillStyle="#fff3c4"; g.fillRect(7,4,2,2); break; }
+    case "bedrock": { noiseTile(g,[62,62,68],46,22);
+      for(let i=0;i<18;i++){const x=Math.random()*TEX|0,y=Math.random()*TEX|0;g.fillStyle="rgba(20,20,24,.75)";g.fillRect(x,y,3,2);} break; }
   }
   return cv;
 }
 // atlas: rows of faces
-const TEX_LIST=["grass_top","grass_side","dirt","stone","sand","wood_top","wood_side","leaf","plank","glass","brick","water","coal"];
+const TEX_LIST=["grass_top","grass_side","dirt","stone","sand","wood_top","wood_side","leaf","plank","glass","brick","water","coal",
+  "cobble","iron","gold","diamond","snow","snow_side","cactus_top","cactus_side","gravel","torch","bedrock"];
 const TI={}; TEX_LIST.forEach((k,i)=>TI[k]=i);
 const ATLAS_COLS=TEX_LIST.length;
 const atlas=document.createElement("canvas"); atlas.width=TEX*ATLAS_COLS; atlas.height=TEX;
@@ -261,6 +296,12 @@ const atlasTex=new THREE.CanvasTexture(atlas); atlasTex.magFilter=THREE.NearestF
 function tileFor(bid,ny){
   switch(bid){
     case B.GRASS: return ny>0.5?TI.grass_top: ny<-0.5?TI.dirt:TI.grass_side;
+    case B.SNOW: return ny>0.5?TI.snow: ny<-0.5?TI.dirt:TI.snow_side;
+    case B.CACTUS: return Math.abs(ny)>0.5?TI.cactus_top:TI.cactus_side;
+    case B.COBBLE: return TI.cobble; case B.IRON: return TI.iron;
+    case B.GOLD: return TI.gold; case B.DIAMOND: return TI.diamond;
+    case B.GRAVEL: return TI.gravel; case B.TORCH: return TI.torch;
+    case B.BEDROCK: return TI.bedrock;
     case B.DIRT: return TI.dirt; case B.STONE: return TI.stone; case B.SAND: return TI.sand;
     case B.WOOD: return Math.abs(ny)>0.5?TI.wood_top:TI.wood_side;
     case B.LEAF: return TI.leaf; case B.WATER: return TI.water; case B.PLANK: return TI.plank;
@@ -293,6 +334,44 @@ function hash2(x,z){ // Math.imul keeps true 32-bit maths; plain * overflowed an
 function smooth(a,b,t){ t=t*t*(3-2*t); return a+(b-a)*t; }
 function vnoise(x,z){ const xi=Math.floor(x),zi=Math.floor(z),xf=x-xi,zf=z-zi;
   return smooth(smooth(hash2(xi,zi),hash2(xi+1,zi),xf), smooth(hash2(xi,zi+1),hash2(xi+1,zi+1),xf), zf); }
+/* Four biomes. A slow noise field decides which, so a walk of a few hundred
+   blocks actually takes you somewhere different rather than more of the same. */
+const BIOME={PLAINS:0,FOREST:1,DESERT:2,SNOW:3};
+function biomeAt(x,z){
+  const t=vnoise(x*0.0022+310,z*0.0022+310);      // temperature
+  const m=vnoise(x*0.0026+770,z*0.0026+770);      // moisture
+  if(t>0.62 && m<0.45) return BIOME.DESERT;
+  if(t<0.36) return BIOME.SNOW;
+  if(m>0.56) return BIOME.FOREST;
+  return BIOME.PLAINS;
+}
+function vnoise3(x,y,z){
+  const xi=Math.floor(x),yi=Math.floor(y),zi=Math.floor(z);
+  const xf=x-xi,yf=y-yi,zf=z-zi;
+  const c=(a,b,d)=>hash2(Math.imul(a,73856093)^Math.imul(d,83492791), Math.imul(b,19349663));
+  const l=(a,b,t)=>{t=t*t*(3-2*t); return a+(b-a)*t;};
+  const x00=l(c(xi,yi,zi),c(xi+1,yi,zi),xf), x10=l(c(xi,yi+1,zi),c(xi+1,yi+1,zi),xf);
+  const x01=l(c(xi,yi,zi+1),c(xi+1,yi,zi+1),xf), x11=l(c(xi,yi+1,zi+1),c(xi+1,yi+1,zi+1),xf);
+  return l(l(x00,x10,yf), l(x01,x11,yf), zf);
+}
+/* Two independent fields both near their midpoint carve long connected tunnels;
+   a single threshold on one field only ever produces disconnected blobs. */
+function isCave(x,y,z){
+  if(y<2 || y>WORLD_H-6) return false;
+  const a=vnoise3(x*0.055, y*0.085, z*0.055);
+  const b=vnoise3(x*0.055+120, y*0.085+120, z*0.055+120);
+  return Math.abs(a-0.5)<0.085 && Math.abs(b-0.5)<0.085;
+}
+/* Ore depth ladder: coal is everywhere shallow, diamond only deep. */
+function oreAt(x,y,z,h){
+  const r=hash2(Math.imul(x,3)+Math.imul(y,7), Math.imul(z,3)+Math.imul(y,11));
+  if(y<8  && r>0.9983) return B.DIAMOND;
+  if(y<16 && r>0.9925) return B.GOLD;
+  if(y<28 && r>0.982)  return B.IRON;
+  if(y<h-3 && r>0.962) return B.COAL;
+  if(y<h-2 && r<0.012) return B.GRAVEL;
+  return 0;
+}
 function heightAt(x,z){
   let h=0,amp=1,f=0.016,s=0;
   for(let o=0;o<5;o++){ h+=vnoise(x*f+50,z*f+50)*amp; s+=amp; amp*=0.5; f*=2; }
@@ -306,22 +385,66 @@ function heightAt(x,z){
 function genChunk(cx,cz){
   const c=new Uint8Array(CHUNK*WORLD_H*CHUNK);
   for(let lx=0;lx<CHUNK;lx++)for(let lz=0;lz<CHUNK;lz++){
-    const wx=cx*CHUNK+lx, wz=cz*CHUNK+lz; const h=Math.min(WORLD_H-2,heightAt(wx,wz));
-    for(let y=0;y<=h;y++){ let b=B.STONE;
-      if(y===h) b=h<=SEA?B.SAND:B.GRASS; else if(y>h-3) b=h<=SEA?B.SAND:B.DIRT;
-      else if(y<h-3 && hash2(wx*3+y*7,wz*3)>0.94) b=B.COAL;
-      c[ci(lx,y,lz)]=b; }
-    for(let y=h+1;y<=SEA;y++) c[ci(lx,y,lz)]=B.WATER;
+    const wx=cx*CHUNK+lx, wz=cz*CHUNK+lz;
+    const h=Math.min(WORLD_H-2,heightAt(wx,wz));
+    const bio=biomeAt(wx,wz);
+    for(let y=0;y<=h;y++){
+      if(y===0){ c[ci(lx,y,lz)]=B.BEDROCK; continue; }
+      if(isCave(wx,y,wz) && y<h-1){ continue; }          // leave air
+      let b=B.STONE;
+      if(y===h){
+        if(h<=SEA) b=B.SAND;
+        else if(bio===BIOME.DESERT) b=B.SAND;
+        else if(bio===BIOME.SNOW) b=B.SNOW;
+        else b=B.GRASS;
+      }else if(y>h-4){
+        b = (h<=SEA||bio===BIOME.DESERT) ? B.SAND : B.DIRT;
+      }else{
+        b = oreAt(wx,y,wz,h) || B.STONE;
+      }
+      c[ci(lx,y,lz)]=b;
+    }
+    for(let y=h+1;y<=SEA;y++) if(c[ci(lx,y,lz)]===B.AIR) c[ci(lx,y,lz)]=B.WATER;
   }
-  // trees (post pass, may write into this chunk only)
+
+  // vegetation, per biome, written only within this chunk
   for(let lx=2;lx<CHUNK-2;lx++)for(let lz=2;lz<CHUNK-2;lz++){
-    const wx=cx*CHUNK+lx, wz=cz*CHUNK+lz; const h=Math.min(WORLD_H-8,heightAt(wx,wz));
-    if(h>SEA && hash2(wx*7,wz*7)>0.982){ const th=4+(hash2(wx,wz)*3|0);
-      for(let t=1;t<=th;t++) if(h+t<WORLD_H) c[ci(lx,h+t,lz)]=B.WOOD;
+    const wx=cx*CHUNK+lx, wz=cz*CHUNK+lz;
+    const h=Math.min(WORLD_H-9,heightAt(wx,wz));
+    if(h<=SEA) continue;
+    if(c[ci(lx,h,lz)]===B.AIR) continue;
+    const bio=biomeAt(wx,wz);
+    const r=hash2(Math.imul(wx,7),Math.imul(wz,7));
+
+    if(bio===BIOME.DESERT){
+      if(r>0.995){                                        // cactus
+        const ch=2+(hash2(wx,wz)*2|0);
+        for(let t=1;t<=ch;t++) if(h+t<WORLD_H) c[ci(lx,h+t,lz)]=B.CACTUS;
+      }
+      continue;
+    }
+    const chance = bio===BIOME.FOREST ? 0.955 : 0.985;    // forests are dense
+    if(r<=chance) continue;
+    const spruce = bio===BIOME.SNOW;
+    const th=(spruce?6:4)+(hash2(wx,wz)*3|0);
+    for(let t=1;t<=th;t++) if(h+t<WORLD_H) c[ci(lx,h+t,lz)]=B.WOOD;
+    if(spruce){
+      for(let layer=0; layer<3; layer++){
+        const rad=3-layer, ay=h+th-layer*2;
+        for(let dx=-rad;dx<=rad;dx++)for(let dz=-rad;dz<=rad;dz++){
+          if(Math.abs(dx)+Math.abs(dz)>rad) continue;
+          const ax=lx+dx, az=lz+dz;
+          if(ax>=0&&ax<CHUNK&&az>=0&&az<CHUNK&&ay<WORLD_H&&c[ci(ax,ay,az)]===B.AIR) c[ci(ax,ay,az)]=B.LEAF;
+        }
+      }
+      if(h+th+1<WORLD_H) c[ci(lx,h+th+1,lz)]=B.LEAF;
+    }else{
       for(let dx=-2;dx<=2;dx++)for(let dz=-2;dz<=2;dz++)for(let dy=th-1;dy<=th+1;dy++){
         const ax=lx+dx, az=lz+dz, ay=h+dy;
-        if(ax>=0&&ax<CHUNK&&az>=0&&az<CHUNK&&ay<WORLD_H&&Math.abs(dx)+Math.abs(dz)+Math.abs(dy-th)<=3 && c[ci(ax,ay,az)]===B.AIR)
-          c[ci(ax,ay,az)]=B.LEAF; }
+        if(ax>=0&&ax<CHUNK&&az>=0&&az<CHUNK&&ay<WORLD_H&&
+           Math.abs(dx)+Math.abs(dz)+Math.abs(dy-th)<=3 && c[ci(ax,ay,az)]===B.AIR)
+          c[ci(ax,ay,az)]=B.LEAF;
+      }
     }
   }
   return c;
@@ -474,8 +597,11 @@ function give(bid,n=1){ inv[bid]=(inv[bid]||0)+n; renderHotbar(); }
 function take(bid,n=1){ if((inv[bid]||0)<n) return false; inv[bid]-=n; if(inv[bid]<=0) delete inv[bid]; renderHotbar(); return true; }
 const RECIPES=[
   {out:B.PLANK,n:4, in:[[B.WOOD,1]], label:"Planks ×4", req:"1 Wood"},
+  {out:B.TORCH,n:4, in:[[B.COAL,1],[B.PLANK,1]], label:"Torch ×4", req:"1 Coal + 1 Planks"},
   {out:B.GLASS,n:1, in:[[B.SAND,2]], label:"Glass", req:"2 Sand"},
-  {out:B.BRICK,n:1, in:[[B.STONE,2]], label:"Brick", req:"2 Stone"},
+  {out:B.BRICK,n:1, in:[[B.COBBLE,2]], label:"Brick", req:"2 Cobblestone"},
+  {out:B.STONE,n:1, in:[[B.COBBLE,1],[B.COAL,1]], label:"Smelt Stone", req:"1 Cobble + 1 Coal"},
+  {out:B.COBBLE,n:4, in:[[B.GRAVEL,4]], label:"Cobblestone ×4", req:"4 Gravel"},
 ];
 function toggleInv(){ const el=document.getElementById("inv"); const show=el.style.display!=="flex";
   if(show){ renderInv(); el.style.display="flex"; running=false; document.exitPointerLock&&document.exitPointerLock(); }
@@ -492,7 +618,7 @@ function renderInv(){
     row.appendChild(swatch(r.out)); const lbl=document.createElement("div"); lbl.className="lbl";
     lbl.innerHTML=`<b>${r.label}</b><div class="req">needs ${r.req}</div>`; row.appendChild(lbl);
     const can=r.in.every(([b,n])=>(inv[b]||0)>=n); row.style.opacity=can?1:0.5;
-    row.addEventListener("click",()=>{ if(r.in.every(([b,n])=>(inv[b]||0)>=n)){ r.in.forEach(([b,n])=>take(b,n)); give(r.out,r.n); sfx("place"); renderInv(); } });
+    row.addEventListener("click",()=>{ if(r.in.every(([b,n])=>(inv[b]||0)>=n)){ r.in.forEach(([b,n])=>take(b,n)); give(r.out,r.n); sfx("place"); if(bid===B.TORCH) torchLights.dirty=true; renderInv(); } });
     cl.appendChild(row); }
 }
 
@@ -571,8 +697,11 @@ let selected=0;
 function selectSlot(i){ selected=i; document.querySelectorAll("#hotbar .slot").forEach((s,k)=>s.classList.toggle("on",k===i)); }
 let mineHold=null, mineProgress=0;
 function mine(){ if(hitMob()) return; const h=raycast(); if(!h) return; if(getV(h.x,h.y,h.z)===B.AIR) return;
-  const b=getV(h.x,h.y,h.z); setV(h.x,h.y,h.z,B.AIR); remesh(h.x,h.z); sfx("break");
-  const drop = b===B.LEAF? null : b===B.GRASS? B.DIRT : b===B.COAL? B.COAL : b;
+  const b=getV(h.x,h.y,h.z);
+  if(BLOCKS[b] && BLOCKS[b].unbreakable){ tip("Bedrock will not break."); return; }
+  setV(h.x,h.y,h.z,B.AIR); remesh(h.x,h.z); sfx("break");
+  if(b===B.TORCH) torchLights.dirty=true;
+  const drop = b===B.LEAF ? null : (DROPS[b]!==undefined ? DROPS[b] : b);
   if(drop!=null && mode==="survival") give(drop,1); else if(mode==="creative"){} saveSoon(); }
 function place(){ const h=raycast(); if(!h) return; const nx=h.x+h.face[0],ny=h.y+h.face[1],nz=h.z+h.face[2];
   const p=player.pos; if(nx===Math.floor(p.x)&&nz===Math.floor(p.z)&&(ny===Math.floor(p.y)||ny===Math.floor(p.y-1))) return;
@@ -636,6 +765,41 @@ let tipT=0; function tip(t){ const el=document.getElementById("tip"); el.textCon
 function updateHUD(){ document.getElementById("posPill").textContent=`x ${player.pos.x.toFixed(0)} · z ${player.pos.z.toFixed(0)}`;
   document.getElementById("modePill").innerHTML = mode==="creative"?(player.fly?"<svg viewBox='0 0 24 24' width='13' height='13' fill='none' stroke='currentColor' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round' style='vertical-align:-2px'><path d='M3 14c6-1 10-4 13-9 1 5 0 9-2 11l4 1-6 3-3-3z'/></svg> Fly":"<svg viewBox='0 0 24 24' width='13' height='13' fill='none' stroke='currentColor' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round' style='vertical-align:-2px'><path d='M3 21h18'/><path d='M5 21V9l7-5 7 5v12'/><path d='M9 21v-6h6v6'/></svg> Creative"):"<svg viewBox='0 0 24 24' width='13' height='13' fill='none' stroke='currentColor' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round' style='vertical-align:-2px'><path d='M14.5 3.5 21 3l-.5 6.5-9 9L8 15z'/><path d='m5 19 3-3M3 21l2-2'/></svg> Survival"; }
 let timeOfDay=0.28, skyA=1;
+/* Torches only matter if they light something, but a light per torch would melt
+   the frame rate. A small pool follows whichever torches are nearest. */
+const torchLights={pool:[],known:[],dirty:true};
+function initTorchLights(){
+  for(let i=0;i<12;i++){
+    const l=new THREE.PointLight(0xffb85c, 0, 15, 2);
+    l.visible=false; scene.add(l); torchLights.pool.push(l);
+  }
+}
+function rescanTorches(){
+  torchLights.known=[];
+  for(const [key,ch] of chunks){
+    const [cx,cz]=key.split(",").map(Number);
+    for(let lx=0;lx<CHUNK;lx++)for(let lz=0;lz<CHUNK;lz++)for(let y=0;y<WORLD_H;y++){
+      if(ch[ci(lx,y,lz)]===B.TORCH) torchLights.known.push([cx*CHUNK+lx+0.5, y+0.5, cz*CHUNK+lz+0.5]);
+    }
+  }
+  torchLights.dirty=false;
+}
+function updateTorchLights(){
+  if(!torchLights.pool.length) return;
+  if(torchLights.dirty) rescanTorches();
+  const p=player.pos;
+  const near=torchLights.known
+    .map(t=>[t,(t[0]-p.x)**2+(t[1]-p.y)**2+(t[2]-p.z)**2])
+    .filter(e=>e[1]<40*40).sort((a,b)=>a[1]-b[1]).slice(0,torchLights.pool.length);
+  torchLights.pool.forEach((l,i)=>{
+    if(i<near.length){
+      const [x,y,z]=near[i][0];
+      l.position.set(x,y,z);
+      l.intensity=1.5+Math.sin(performance.now()*0.006+i)*0.18;   // gentle flicker
+      l.visible=true;
+    }else{ l.visible=false; l.intensity=0; }
+  });
+}
 function updateSky(dt){ timeOfDay=(timeOfDay+dt/180)%1; const a=Math.sin(timeOfDay*6.283-1.57)*0.5+0.5; skyA=a;
   const day=new THREE.Color(0x8fc7ff),night=new THREE.Color(0x0a1024); const s=night.clone().lerp(day,a);
   scene.background=s; scene.fog.color=s; sun.intensity=0.2+a*0.95; amb.intensity=0.3+a*0.55;
@@ -656,7 +820,7 @@ function frame(now){ requestAnimationFrame(frame); const dt=Math.min(0.05,(now-l
     camera.position.copy(player.pos); camera.rotation.set(pitch,yaw,0,"YXZ");
     updateChunks(false); processQueue();
     const h=raycast(); if(h){highlight.visible=true;highlight.position.set(h.x+0.5,h.y+0.5,h.z+0.5);} else highlight.visible=false;
-    updateSky(dt); updateHUD(); survivalTick(dt); maybeSpawnMobs(dt); updateMobs(dt);
+    updateSky(dt); updateTorchLights(); updateHUD(); survivalTick(dt); maybeSpawnMobs(dt); updateMobs(dt);
     // footstep sfx
     if((keys["KeyW"]||keys["KeyA"]||keys["KeyS"]||keys["KeyD"]||touchVec.x||touchVec.y)&&player.onGround){ stepT+=dt; if(stepT>0.34){stepT=0;sfx("step");} }
   }
@@ -675,6 +839,8 @@ function startGame(fresh){ document.getElementById("loadNote").textContent="Gene
   // a focused menu button would swallow Space, which is jump
   if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
   clearKeys();
+  if(!torchLights.pool.length) initTorchLights();
+  torchLights.dirty=true;
   setTimeout(()=>{ clearMeshes(); clearMobs();
     if(fresh || !loadWorld()){ SEED=(Math.random()*1e6)|0; chunks.clear(); spawnPlayer(); for(const k in inv) delete inv[k];
       if(mode==="survival"){ give(B.DIRT,10); give(B.PLANK,10); } }
