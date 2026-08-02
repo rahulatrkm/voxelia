@@ -112,8 +112,8 @@
 <div id="hud">
   <div class="pill" id="posPill">x 0 · z 0</div>
   <div class="pill" id="fpsPill">– fps</div>
-  <div class="pill" id="modePill">🚶 Survival</div>
-  <div class="pill" id="timePill">☀️ Day</div>
+  <div class="pill" id="modePill"><svg viewBox='0 0 24 24' width='15' height='15' fill='none' stroke='currentColor' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round' style='vertical-align:-2px'><path d='M13 4a1.6 1.6 0 1 0 0-.1'/><path d='M9 21l2.5-5 2-3 1 4 3 4'/><path d='M8 10l4-2 3 1 3 3'/></svg> Survival</div>
+  <div class="pill" id="timePill"><svg viewBox='0 0 24 24' width='13' height='13' fill='none' stroke='currentColor' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round' style='vertical-align:-2px'><circle cx='12' cy='12' r='4'/><path d='M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4'/></svg> Day</div>
 </div>
 
 <div id="vitals">
@@ -127,9 +127,9 @@
 <!-- Inventory / crafting -->
 <div id="inv">
   <div class="panel">
-    <h3>🎒 Inventory</h3>
+    <h3><svg viewBox='0 0 24 24' width='16' height='16' fill='none' stroke='currentColor' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round' style='vertical-align:-2px'><path d='M6 8h12l1 12H5z'/><path d='M9 8V6a3 3 0 0 1 6 0v2'/></svg> Inventory</h3>
     <div class="grid" id="invGrid"></div>
-    <h3>🛠️ Crafting</h3>
+    <h3><svg viewBox='0 0 24 24' width='16' height='16' fill='none' stroke='currentColor' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round' style='vertical-align:-2px'><path d='M4 9h11l3 3h3l-2 4H8l-4-4z'/><path d='M9 16v3H7v2h10v-2h-2v-3'/></svg> Crafting</h3>
     <div id="craftList"></div>
     <div class="row"><button class="btn ghost" id="invClose">Close (E)</button></div>
   </div>
@@ -139,9 +139,9 @@
 <div id="touch">
   <div id="stick"><i></i></div>
   <div class="tbtn" id="tJump">⤒</div>
-  <div class="tbtn" id="tMine">⛏️</div>
-  <div class="tbtn" id="tPlace">🧱</div>
-  <div class="tbtn" id="tFly">🕊️</div>
+  <div class="tbtn" id="tMine"><svg viewBox='0 0 24 24' width='18' height='18' fill='none' stroke='currentColor' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round' style='vertical-align:-2px'><path d='M14 4c3 0 6 3 6 6'/><path d='M4 20 14.5 9.5'/><path d='M9 5l10 10'/></svg></div>
+  <div class="tbtn" id="tPlace"><svg viewBox='0 0 24 24' width='18' height='18' fill='none' stroke='currentColor' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round' style='vertical-align:-2px'><path d='M12 2 21 7v10l-9 5-9-5V7z'/><path d='M3 7l9 5 9-5M12 12v10'/></svg></div>
+  <div class="tbtn" id="tFly"><svg viewBox='0 0 24 24' width='18' height='18' fill='none' stroke='currentColor' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round' style='vertical-align:-2px'><path d='M3 14c6-1 10-4 13-9 1 5 0 9-2 11l4 1-6 3-3-3z'/></svg></div>
 </div>
 
 <!-- Menu -->
@@ -150,16 +150,16 @@
     <div class="logo"><span class="v">Voxel</span><span class="x">ia</span></div>
     <p class="tag">A 3D voxel sandbox you can build — and survive — anything in.</p>
     <div class="modes" id="modes">
-      <div class="mode on" data-mode="survival">🗡️ Survival</div>
-      <div class="mode" data-mode="creative">🏗️ Creative</div>
+      <div class="mode on" data-mode="survival"><svg viewBox='0 0 24 24' width='15' height='15' fill='none' stroke='currentColor' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round' style='vertical-align:-2px'><path d='M14.5 3.5 21 3l-.5 6.5-9 9L8 15z'/><path d='m5 19 3-3M3 21l2-2'/></svg> Survival</div>
+      <div class="mode" data-mode="creative"><svg viewBox='0 0 24 24' width='15' height='15' fill='none' stroke='currentColor' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round' style='vertical-align:-2px'><path d='M3 21h18'/><path d='M5 21V9l7-5 7 5v12'/><path d='M9 21v-6h6v6'/></svg> Creative</div>
     </div>
     <div class="feat">
-      <div><b>🌍 Infinite streaming worlds</b><br/>Chunks load around you as you explore — walk forever.</div>
-      <div><b>🧱 Textured blocks + AO</b><br/>Procedural textures and ambient occlusion for real depth.</div>
+      <div><b><svg viewBox='0 0 24 24' width='15' height='15' fill='none' stroke='currentColor' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round' style='vertical-align:-2px'><circle cx='12' cy='12' r='9'/><path d='M3 12h18M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18'/></svg> Infinite streaming worlds</b><br/>Chunks load around you as you explore — walk forever.</div>
+      <div><b><svg viewBox='0 0 24 24' width='15' height='15' fill='none' stroke='currentColor' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round' style='vertical-align:-2px'><path d='M12 2 21 7v10l-9 5-9-5V7z'/><path d='M3 7l9 5 9-5M12 12v10'/></svg> Textured blocks + AO</b><br/>Procedural textures and ambient occlusion for real depth.</div>
       <div><b>❤️ Survival</b><br/>Health, hunger, fall & drown damage, eat to heal, respawn.</div>
-      <div><b>🐷 Mobs</b><br/>Animals roam by day; hostiles spawn in the dark.</div>
-      <div><b>🎒 Inventory & crafting</b><br/>Blocks drop when mined; craft planks, glass & more.</div>
-      <div><b>🔊 Sound & mobile</b><br/>Procedural SFX, on-screen controls on touch devices.</div>
+      <div><b><svg viewBox='0 0 24 24' width='15' height='15' fill='none' stroke='currentColor' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round' style='vertical-align:-2px'><path d='M4 13a5 5 0 0 1 5-5h5l4-2v4l2 2-2 2v3h-4l-1 2H9l-1-2H6z'/><path d='M8 12h.01'/></svg> Mobs</b><br/>Animals roam by day; hostiles spawn in the dark.</div>
+      <div><b><svg viewBox='0 0 24 24' width='15' height='15' fill='none' stroke='currentColor' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round' style='vertical-align:-2px'><path d='M6 8h12l1 12H5z'/><path d='M9 8V6a3 3 0 0 1 6 0v2'/></svg> Inventory &amp; crafting</b><br/>Blocks drop when mined; craft planks, glass & more.</div>
+      <div><b><svg viewBox='0 0 24 24' width='15' height='15' fill='none' stroke='currentColor' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round' style='vertical-align:-2px'><path d='M10 5 6 9H3v6h3l4 4z'/><path d='M14 8.5a5 5 0 0 1 0 7'/></svg> Sound &amp; mobile</b><br/>Procedural SFX, on-screen controls on touch devices.</div>
     </div>
     <div class="row">
       <button class="btn" id="playBtn">Play now →</button>
@@ -598,7 +598,7 @@ function renderHotbar(){ hotbarEl.innerHTML=""; HOTBAR.forEach((bid,i)=>{ const 
 function renderVitals(){ const H=document.getElementById("health"),F=document.getElementById("hunger"); H.innerHTML="";F.innerHTML="";
   if(mode==="creative"){ document.getElementById("vitals").style.display="none"; return; } document.getElementById("vitals").style.display="flex";
   for(let i=0;i<player.maxHp;i++){ const s=document.createElement("span"); s.className="icon"+(i<player.hp?"":" off"); s.textContent="❤️"; H.appendChild(s);}
-  for(let i=0;i<player.maxFood;i++){ const s=document.createElement("span"); s.className="icon"+(i<player.food?"":" off"); s.textContent="🍗"; F.appendChild(s);}
+  for(let i=0;i<player.maxFood;i++){ const s=document.createElement("span"); s.className="icon"+(i<player.food?"":" off"); s.innerHTML="<svg viewBox='0 0 24 24' width='12' height='12' fill='none' stroke='currentColor' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round' style='vertical-align:-2px'><path d='M14 4a5 5 0 0 1 6 6l-8 8-4 2-2-2 2-4z'/></svg>"; F.appendChild(s);}
 }
 
 // ============================================================ sound (WebAudio, procedural)
@@ -630,13 +630,13 @@ function loadWorld(){ const raw=localStorage.getItem(SAVE_KEY); if(!raw) return 
 // ============================================================ tip + hud + sky
 let tipT=0; function tip(t){ const el=document.getElementById("tip"); el.textContent=t; el.classList.add("show"); tipT=1500; }
 function updateHUD(){ document.getElementById("posPill").textContent=`x ${player.pos.x.toFixed(0)} · z ${player.pos.z.toFixed(0)}`;
-  document.getElementById("modePill").textContent = mode==="creative"?(player.fly?"🕊️ Fly":"🏗️ Creative"):"🗡️ Survival"; }
+  document.getElementById("modePill").innerHTML = mode==="creative"?(player.fly?"<svg viewBox='0 0 24 24' width='13' height='13' fill='none' stroke='currentColor' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round' style='vertical-align:-2px'><path d='M3 14c6-1 10-4 13-9 1 5 0 9-2 11l4 1-6 3-3-3z'/></svg> Fly":"<svg viewBox='0 0 24 24' width='13' height='13' fill='none' stroke='currentColor' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round' style='vertical-align:-2px'><path d='M3 21h18'/><path d='M5 21V9l7-5 7 5v12'/><path d='M9 21v-6h6v6'/></svg> Creative"):"<svg viewBox='0 0 24 24' width='13' height='13' fill='none' stroke='currentColor' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round' style='vertical-align:-2px'><path d='M14.5 3.5 21 3l-.5 6.5-9 9L8 15z'/><path d='m5 19 3-3M3 21l2-2'/></svg> Survival"; }
 let timeOfDay=0.28, skyA=1;
 function updateSky(dt){ timeOfDay=(timeOfDay+dt/180)%1; const a=Math.sin(timeOfDay*6.283-1.57)*0.5+0.5; skyA=a;
   const day=new THREE.Color(0x8fc7ff),night=new THREE.Color(0x0a1024); const s=night.clone().lerp(day,a);
   scene.background=s; scene.fog.color=s; sun.intensity=0.2+a*0.95; amb.intensity=0.3+a*0.55;
   sun.position.set(Math.cos(timeOfDay*6.283)*80, Math.sin(timeOfDay*6.283)*90+10,30);
-  document.getElementById("timePill").textContent=a>0.5?"☀️ Day":a>0.3?"🌆 Dusk":"🌙 Night"; }
+  document.getElementById("timePill").innerHTML=a>0.5?"<svg viewBox='0 0 24 24' width='13' height='13' fill='none' stroke='currentColor' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round' style='vertical-align:-2px'><circle cx='12' cy='12' r='4'/><path d='M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4'/></svg> Day":a>0.3?"<svg viewBox='0 0 24 24' width='13' height='13' fill='none' stroke='currentColor' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round' style='vertical-align:-2px'><path d='M3 17h18'/><circle cx='12' cy='12' r='4'/><path d='M12 4v2M4.9 6.9l1.4 1.4M17.7 8.3l1.4-1.4'/></svg> Dusk":"<svg viewBox='0 0 24 24' width='13' height='13' fill='none' stroke='currentColor' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round' style='vertical-align:-2px'><path d='M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z'/></svg> Night"; }
 
 // hunger drain + regen
 let hungerT=0;
