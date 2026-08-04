@@ -362,7 +362,13 @@
 </div>
 
 <script type="importmap">
-{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+{
+  "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" },
+  "integrity": {
+    "https://unpkg.com/three@0.160.0/build/three.module.js":
+      "sha384-61S/Nu32S3E5+n+KpCOTb2eRYps6fVKm+9Gz1QBvSePFthb46f063Aa/qe/lykFZ"
+  }
+}
 </script>
 <script type="module">
 import * as THREE from "three";
@@ -1488,7 +1494,14 @@ let touchVec={x:0,y:0}, touchJump=false;
 
 function clearKeys(){ for(const k in keys) keys[k]=false; touchVec={x:0,y:0}; touchJump=false; }
 addEventListener("blur",clearKeys);
-document.addEventListener("visibilitychange",()=>{ if(document.hidden) clearKeys(); });
+document.addEventListener("visibilitychange",()=>{
+  if(document.hidden){
+    clearKeys();
+    // Switching apps on a phone often never fires beforeunload, and the save is
+    // debounced by more than a second, so this is where building gets lost.
+    if(running) saveWorld();
+  }
+});
 
 function spawnPlayer(){
   const s=player.spawn;
@@ -2439,19 +2452,37 @@ function sfx(kind){
 
 // ============================================================ save / load
 const SAVE_KEY="voxelia_world_v3";
+const SAVE_V=3;
+let saveBlocked=false;   // set when the stored world is newer than this build
 let saveTimer=null;
 function saveSoon(){ clearTimeout(saveTimer); saveTimer=setTimeout(saveWorld,1200); }
 function rle(arr){ const out=[]; let prev=arr[0],run=0;
   for(let i=0;i<arr.length;i++){ if(arr[i]===prev)run++; else{ out.push(prev,run); prev=arr[i]; run=1; } }
   out.push(prev,run); return out; }
 function unrle(rleArr,len){ const a=new Uint8Array(len); let i=0;
-  for(let k=0;k<rleArr.length;k+=2){ const v=rleArr[k],r=rleArr[k+1]; for(let j=0;j<r;j++)a[i++]=v; } return a; }
+  for(let k=0;k<rleArr.length;k+=2){ const v=rleArr[k],r=rleArr[k+1]; for(let j=0;j<r;j++)a[i++]=v; }
+  // A run table that does not add up to a whole chunk means the saved bytes are
+  // damaged. Filling the remainder with zeroes would quietly turn somebody's
+  // build into air, which looks like the game ate it rather than like an error.
+  if(i!==len) throw new Error("chunk length "+i+", expected "+len);
+  return a; }
+
+/* Slot counts have changed before and may change again. Throwing the whole
+   container away because it is the wrong length loses every item in it, so it
+   is resized instead: what fits is kept, and anything that no longer fits is
+   handed back so it can be put somewhere rather than deleted. */
+function fitSlots(saved,n){
+  if(!Array.isArray(saved)) return { slots:Array.from({length:n},()=>null), spilled:[] };
+  const slots=Array.from({length:n},(_,i)=>saved[i]!==undefined?saved[i]:null);
+  const spilled=saved.slice(n).filter(x=>x);
+  return { slots, spilled };
+}
 function saveWorld(){
-  if(!SEED) return;
+  if(!SEED || saveBlocked) return;
   try{
     const edits={}; for(const k of modified){ const c=chunks.get(k); if(c) edits[k]=Array.from(rle(c)); }
     localStorage.setItem(SAVE_KEY, JSON.stringify({
-      v:3, seed:SEED, mode, hardcore, t:timeOfDay,
+      v:SAVE_V, seed:SEED, mode, hardcore, t:timeOfDay,
       p:[player.pos.x,player.pos.y,player.pos.z], yaw, pitch,
       hp:player.hp, food:player.food, air:player.air, xp:player.xp, lvl:player.lvl, spawn:player.spawn,
       pack, armor, sel:selected,
@@ -2463,15 +2494,36 @@ function loadWorld(){
   const raw=localStorage.getItem(SAVE_KEY); if(!raw) return false;
   try{
     const d=JSON.parse(raw);
+    // The version was written from the start but never read. If a later build
+    // ever saves a shape this one does not understand, guessing at it and then
+    // saving the guess back would destroy the real world. Refuse both.
+    if(typeof d.v==="number" && d.v>SAVE_V){
+      saveBlocked=true;
+      console.warn("saved world is version",d.v,"and this build understands",SAVE_V);
+      return false;
+    }
     SEED=d.seed||SEED; mode=d.mode||"survival"; hardcore=!!d.hardcore; timeOfDay=d.t??0.28;
     chunks.clear(); fluid.clear(); bents.clear(); modified.clear();
-    for(const k in d.chunks){ chunks.set(k, unrle(d.chunks[k], CHUNK*WORLD_H*CHUNK)); modified.add(k); }
+    // One damaged chunk used to throw, which was caught below and threw away the
+    // entire world. Now it costs that chunk alone and the rest is kept.
+    let lost=0;
+    for(const k in d.chunks){
+      try{ chunks.set(k, unrle(d.chunks[k], CHUNK*WORLD_H*CHUNK)); modified.add(k); }
+      catch(e){ lost++; }
+    }
+    if(lost) console.warn(lost+" chunk(s) could not be read and were left as generated terrain");
     for(const [k,v] of (d.fluid||[])) fluid.set(k,v);
     for(const [k,v] of (d.bents||[])) bents.set(k,v);
     if(d.p) player.pos.set(d.p[0],d.p[1],d.p[2]);
     if(typeof d.yaw==="number"){ yaw=d.yaw; pitch=d.pitch||0; }
-    pack = (d.pack&&d.pack.length===PACK_N) ? d.pack : Array.from({length:PACK_N},()=>null);
-    armor = d.armor&&d.armor.length===4 ? d.armor : [null,null,null,null];
+    const p=fitSlots(d.pack,PACK_N), a=fitSlots(d.armor,4);
+    pack=p.slots; armor=a.slots;
+    // Anything that no longer fits goes into free pack slots rather than nowhere.
+    for(const item of p.spilled.concat(a.spilled)){
+      const free=pack.indexOf(null);
+      if(free<0) break;
+      pack[free]=item;
+    }
     player.hp=d.hp??20; player.food=d.food??20; player.air=d.air??10;
     player.xp=d.xp||0; player.lvl=d.lvl||0; player.spawn=d.spawn||null;
     selected=d.sel||0;
@@ -2700,7 +2752,20 @@ function showPause(){
 }
 function resume(){ hideOverlay("pause"); running=true; lockPointer(); }
 document.getElementById("playBtn").addEventListener("click",()=>startGame(false));
-document.getElementById("resetBtn").addEventListener("click",()=>{ localStorage.removeItem(SAVE_KEY); startGame(true); });
+document.getElementById("resetBtn").addEventListener("click",()=>{
+  // This erases a world that exists nowhere else. Ask first, in the page,
+  // because a suppressed confirm() returns false and would strand the button.
+  const btn=document.getElementById("resetBtn");
+  if(btn.dataset.armed!=="1"){
+    btn.dataset.armed="1";
+    const was=btn.textContent;
+    btn.textContent="Erase saved world?";
+    setTimeout(()=>{ btn.dataset.armed=""; btn.textContent=was; },4000);
+    return;
+  }
+  btn.dataset.armed="";
+  localStorage.removeItem(SAVE_KEY); saveBlocked=false; startGame(true);
+});
 document.getElementById("resumeBtn").addEventListener("click",resume);
 document.getElementById("saveBtn").addEventListener("click",()=>{ saveWorld(); tip("Saved"); });
 document.getElementById("menuBtn").addEventListener("click",()=>{ hideOverlay("pause"); showOverlay("menu"); running=false; });
